@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aura Pro V5</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* FIX 1: CSS to prevent zoom actions */
+        html, body { 
+            touch-action: manipulation; 
+            overflow: hidden; /* Prevent body scroll */
+            height: 100%;
+            width: 100%;
+        }
+
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* SCROLLBAR */
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 20px; }
+        
+        /* THEMES */
+        .theme-dark { background-color: #09090b; color: #e4e4e7; }
+        .theme-light { background-color: #f3f4f6; color: #18181b; }
+
+        /* GLASS CONTAINER */
+        .glass-app {
+            background: rgba(20, 20, 25, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .theme-light .glass-app {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* SIDEBAR TRANSITION */
+        #sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+        }
+        
+        /* MARKDOWN STYLES */
+        pre { background: #18181b; border-radius: 8px; padding: 12px; margin: 10px 0; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1); }
+        code { font-family: monospace; font-size: 0.9em; }
+        .markdown p { margin-bottom: 0.8em; }
+        .markdown ul { list-style: disc; padding-left: 1.5em; margin-bottom: 0.8em; }
+        
+        /* ANIMATION */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg-anim { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* CURSOR */
+        .typing::after { content: '▋'; animation: blink 1s infinite; color: #6366f1; margin-left: 2px; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="theme-dark bg-[url('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=2574')] bg-cover bg-center">
+
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-3xl z-0"></div>
+
+    <div class="relative z-10 w-full h-full flex overflow-hidden">
+        
+        <aside id="sidebar" class="h-full bg-black/20 border-r border-white/10 flex flex-col w-0 md:w-72 overflow-hidden absolute md:relative z-30 backdrop-blur-xl md:backdrop-blur-none">
+            <div class="p-6 flex items-center justify-between border-b border-white/5 h-20">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">A</div>
+                    <span class="font-bold text-lg text-white tracking-wide whitespace-nowrap">Aura Pro</span>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button onclick="clearChat()" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 transition-all whitespace-nowrap">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    New Chat
+                </button>
+                <button onclick="toggleTheme()" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-gray-300 transition-all whitespace-nowrap">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    Toggle Theme
+                </button>
+            </nav>
+            
+            <div class="p-4 border-t border-white/5">
+                 <div class="text-xs text-gray-500 text-center whitespace-nowrap">v5.0 Stable Build</div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col relative h-full min-w-0 bg-transparent">
+            
+            <header class="h-16 flex items-center justify-between px-4 border-b border-white/5 bg-black/10 backdrop-blur-md z-20 shrink-0">
+                <button onclick="toggleSidebar()" class="p-2 rounded-lg hover:bg-white/10 text-gray-300 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <span class="font-bold text-gray-200">Workspace</span>
+                <div class="w-8"></div> </header>
+
+            <div id="chat-box" class="flex-1 overflow-y-auto custom-scroll p-4 md:p-8 scroll-smooth">
+                <div class="max-w-4xl mx-auto flex flex-col gap-6" id="messages-inner">
+                    <div class="msg-anim flex gap-4">
+                        <div class="w-8 h-8 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mt-1 shadow-lg shadow-indigo-500/50">A</div>
+                        <div class="bg-white/5 border border-white/10 p-4 rounded-2xl rounded-tl-none text-gray-200 shadow-sm backdrop-blur-sm">
+                            <p class="font-bold text-indigo-400 mb-1 text-sm">System</p>
+                            Hello! I'm ready.<br>Double-tap zoom is disabled.<br>Scrolling is fixed.<br>Sidebar is toggleable.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 md:p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent shrink-0 z-20">
+                <div class="max-w-4xl mx-auto relative">
+                    <div id="preview-row" class="hidden flex gap-2 overflow-x-auto pb-2 mb-1"></div>
+                    
+                    <div class="bg-[#1e1e24] border border-white/10 rounded-2xl p-2 pl-4 flex items-center gap-3 shadow-2xl ring-1 ring-white/5">
+                        <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                        <button id="attach-btn" class="p-2 text-gray-400 hover:text-indigo-400 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                        </button>
+                        <input type="text" id="chat-input" placeholder="Type message..." class="flex-1 bg-transparent border-none outline-none text-white h-10 placeholder-gray-500 text-base">
+                        <button id="send-btn" class="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg transition-transform active:scale-95">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center hidden px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="bg-[#18181b] border border-white/10 p-6 rounded-2xl relative z-10 w-full max-w-sm text-center shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-4">Files Ready</h3>
+            <div class="grid gap-3">
+                <button onclick="processAction('pdf')" class="py-3 bg-red-500/20 text-red-400 rounded-xl font-medium border border-red-500/20 hover:bg-red-500/30 transition">Make PDF</button>
+                <button onclick="processAction('analyze')" class="py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20">Analyze</button>
+            </div>
+            <button onclick="closeModal()" class="mt-4 text-gray-500 text-sm">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // --------------------------------------------------------
+        // 🔑 PASTE API KEY HERE
+        // --------------------------------------------------------
+        const API_KEY = "AIzaSyD5T6dy1Qh2QkErn506UCgcKqFIt4kP6yA";
+        // --------------------------------------------------------
+
+        // --- DOM ELEMENTS ---
+        const sidebar = document.getElementById('sidebar');
+        const messagesContainer = document.getElementById('messages-inner');
+        const chatInput = document.getElementById('chat-input');
+        const chatBox = document.getElementById('chat-box');
+        const fileInput = document.getElementById('file-input');
+        const modal = document.getElementById('modal');
+        const previewRow = document.getElementById('preview-row');
+        let pendingFiles = [];
+
+        // --- SIDEBAR LOGIC (FIX 4) ---
+        let isSidebarOpen = window.innerWidth >= 768; // Default open on desktop
+        
+        function toggleSidebar() {
+            isSidebarOpen = !isSidebarOpen;
+            if (isSidebarOpen) {
+                sidebar.classList.remove('w-0', '-translate-x-full');
+                sidebar.classList.add('w-72', 'translate-x-0');
+            } else {
+                sidebar.classList.remove('w-72', 'translate-x-0');
+                sidebar.classList.add('w-0', '-translate-x-full'); // Fully hide
+            }
+        }
+        
+        // Initial set for mobile/desktop
+        if(window.innerWidth < 768) { 
+            isSidebarOpen = false;
+            sidebar.classList.add('w-0'); // Start closed on mobile
+        } else {
+            sidebar.classList.add('w-72'); // Start open on desktop
+        }
+
+        // --- MARKDOWN SETUP ---
+        marked.setOptions({
+            highlight: (code, lang) => {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            }
+        });
+        
+        const renderer = new marked.Renderer();
+        renderer.code = (code, language) => {
+            return `<div class="mt-2 mb-4 rounded-lg overflow-hidden border border-white/10 bg-[#1e1e1e]">
+                <div class="flex justify-between items-center px-4 py-2 bg-[#2d2d2d] border-b border-white/5">
+                    <span class="text-xs text-gray-400 uppercase font-mono">${language||'code'}</span>
+                    <button onclick="copyToClip(this, \`${btoa(code)}\`)" class="text-xs text-indigo-400 hover:text-white transition">Copy</button>
+                </div>
+                <div class="p-3 overflow-x-auto"><code class="hljs ${language}">${hljs.highlightAuto(code).value}</code></div>
+            </div>`;
+        };
+        marked.use({ renderer });
+
+        // --- FILE HANDLING ---
+        document.getElementById('attach-btn').addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            pendingFiles = Array.from(e.target.files);
+            modal.classList.remove('hidden');
+        });
+        function closeModal() { modal.classList.add('hidden'); fileInput.value = ''; pendingFiles = []; }
+        
+        async function processAction(type) {
+            closeModal();
+            const grid = document.createElement('div');
+            grid.className = 'flex gap-2 overflow-x-auto mb-2';
+            const b64s = [];
+            for(let f of pendingFiles) {
+                const img = document.createElement('img'); img.src = URL.createObjectURL(f); 
+                img.className = 'h-20 w-auto rounded-lg border border-white/20';
+                grid.appendChild(img);
+                if(type === 'analyze') b64s.push(await fileToBase64(f));
+            }
+            addUserMsg("Uploaded files:", grid);
+            
+            if(type === 'pdf') await makePDF(pendingFiles);
+            else {
+                const loadId = addLoader();
+                await askGemini("Analyze these images.", b64s, loadId);
+            }
+            pendingFiles = [];
+        }
+
+        // --- CHAT LOGIC ---
+        document.getElementById('send-btn').addEventListener('click', sendMsg);
+        chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMsg());
+
+        async function sendMsg() {
+            const txt = chatInput.value.trim();
+            if(!txt) return;
+            addUserMsg(txt);
+            chatInput.value = '';
+            const loadId = addLoader();
+            await askGemini(txt, [], loadId);
+        }
+
+        async function askGemini(prompt, images, loadId) {
+            if(API_KEY.includes("PASTE")) {
+                document.getElementById(loadId).remove();
+                return streamText("⚠️ **Error:** API Key missing in code.");
+            }
+            try {
+                const parts = [{ text: prompt }, ...images];
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts }] })
+                });
+                const data = await res.json();
+                document.getElementById(loadId).remove();
+                if(data.error) throw new Error(data.error.message);
+                streamText(data.candidates[0].content.parts[0].text);
+            } catch(e) {
+                document.getElementById(loadId)?.remove();
+                streamText("Error: " + e.message);
+            }
+        }
+
+        function addUserMsg(text, element) {
+            const div = document.createElement('div');
+            div.className = 'msg-anim flex flex-row-reverse gap-4';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-white flex-shrink-0 flex items-center justify-center text-black text-xs font-bold mt-1">U</div>
+                <div class="flex flex-col items-end max-w-[85%]">
+                    <div class="bg-indigo-600 text-white p-3 px-4 rounded-2xl rounded-tr-none text-sm md:text-base shadow-lg">
+                        ${text}
+                    </div>
+                </div>`;
+            if(element) div.querySelector('.flex-col').appendChild(element);
+            messagesContainer.appendChild(div);
+            scrollToBottom();
+        }
+
+        function streamText(text) {
+            const div = document.createElement('div');
+            div.className = 'msg-anim flex gap-4 w-full';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mt-1 shadow-lg">A</div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-indigo-400 text-xs mb-1">AURA</div>
+                    <div class="markdown bg-white/5 border border-white/10 p-4 rounded-2xl rounded-tl-none text-gray-200 text-sm md:text-base shadow-sm">
+                        <span class="typing"></span>
+                    </div>
+                </div>`;
+            messagesContainer.appendChild(div);
+            scrollToBottom();
+
+            const target = div.querySelector('.typing').parentElement;
+            let i = 0;
+            const interval = setInterval(() => {
+                target.innerHTML = text.substring(0, i) + '<span class="typing"></span>';
+                scrollToBottom();
+                i++;
+                if(i > text.length) {
+                    clearInterval(interval);
+                    target.innerHTML = marked.parse(text);
+                    hljs.highlightAll();
+                    scrollToBottom();
+                }
+            }, 8);
+        }
+
+        function addLoader() {
+            const id = 'l-' + Date.now();
+            const div = document.createElement('div'); div.id = id;
+            div.className = 'msg-anim flex gap-4';
+            div.innerHTML = `<div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold mt-1">A</div><div class="text-gray-400 text-sm italic mt-2 animate-pulse">Thinking...</div>`;
+            messagesContainer.appendChild(div);
+            scrollToBottom();
+            return id;
+        }
+
+        // --- UTILS ---
+        function scrollToBottom() { chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' }); }
+        window.copyToClip = (btn, b64) => { navigator.clipboard.writeText(atob(b64)); btn.innerText = "Copied!"; setTimeout(()=>btn.innerText="Copy", 2000); };
+        async function fileToBase64(file) { return new Promise(r => { const rd = new FileReader(); rd.onloadend = () => r({ inline_data: { mime_type: file.type, data: rd.result.split(',')[1] } }); rd.readAsDataURL(file); }); }
+        
+        async function makePDF(files) {
+            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            const loadId = addLoader();
+            for(let i=0; i<files.length; i++) {
+                if(i>0) doc.addPage();
+                const d = await new Promise(r=>{const fr=new FileReader();fr.onload=e=>r(e.target.result);fr.readAsDataURL(files[i])});
+                const img = new Image(); img.src=d; await new Promise(r=>img.onload=r);
+                const r = img.width/img.height; const pW=210, pH=297; 
+                let w=pW-20, h=w/r; if(h>pH-20) { h=pH-20; w=h*r; }
+                doc.addImage(d, 'JPEG', (pW-w)/2, (pH-h)/2, w, h);
+            }
+            document.getElementById(loadId).remove();
+            streamText(`PDF Created. [Download Here](${URL.createObjectURL(doc.output('blob'))})`);
+        }
+        function clearChat() { messagesContainer.innerHTML = ''; window.location.reload(); }
+        function toggleTheme() { document.body.classList.toggle('theme-light'); document.body.classList.toggle('theme-dark'); }
+    </script>
+</body>
+</html>
